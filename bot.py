@@ -856,7 +856,22 @@ def run_cycle(state):
         STARTING_BALANCE_EUR,
     ):
         state["equity_peak"] = equity
+    peak = state.get(
+        "equity_peak",
+        STARTING_BALANCE_EUR,
+    )
 
+    current_drawdown = max(
+        0.0,
+        peak - equity,
+    )
+
+    state["max_drawdown"] = max(
+        state.get("max_drawdown", 0.0),
+        current_drawdown,
+    )
+
+    state["max_drawdown_eur"] = state["max_drawdown"]
     print()
     print("=" * 65)
     print("METALS PAPER TRADING BOT - SIMULACIÓN")

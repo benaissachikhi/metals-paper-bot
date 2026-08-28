@@ -137,7 +137,26 @@ def load_state():
         if closed > 0
         else 0.0
     )
+    closed_ops = []
+    last_buy = {}
 
+    for t in trades:
+        action = str(t.get("action", "")).upper()
+        symbol = str(t.get("symbol", "-"))
+        price = float(t.get("price", 0) or 0)
+
+        if action == "BUY_SIM":
+            last_buy[symbol] = price
+
+        elif action == "SELL_SIM":
+            closed_ops.append({
+                "symbol": symbol,
+                "entry_price": float(last_buy.get(symbol, 0) or 0),
+                "exit_price": price,
+                "pnl": float(t.get("pnl", 0) or 0),
+            })
+
+            last_buy.pop(symbol, None)
     return {
         "equity": 1000.0 + total_pnl,
         "cash": float(raw.get("cash_eur", 1000.0) or 0.0),
@@ -151,6 +170,7 @@ def load_state():
         "max_drawdown": float(
             raw.get("max_drawdown", 0.0) or 0.0
         ),
+        "closed_ops": closed_ops,
         "trades": trades if trades else raw.get("trades", []),
     }
 
@@ -377,29 +397,29 @@ HTML = """
     <div class="card">
         <div class="label">Últimas operaciones</div>
 
-        {% if s.trades %}
-        <table>
-            <tr>
-                <th>Acción</th>
-                <th>Metal</th>
-                <th>Precio</th>
-                <th>PnL</th>
-            </tr>
+        {% if s.closed_ops %}
+<table>
+    <tr>
+        <th>Metal</th>
+        <th>Entrada</th>
+        <th>Salida</th>
+        <th>PnL</th>
+    </tr>
 
-            {% for t in s.trades[-10:]|reverse %}
-            <tr>
-                <td>{{ t.get("action", "-") }}</td>
-                <td>{{ t.get("symbol", "-") }}</td>
-                <td>{{ t.get("price", "-") }}</td>
-                <td class="{{ 'profit' if t.get('pnl',0) >= 0 else 'loss' }}">
-                    {{ "%+.2f"|format(t.get("pnl",0)) }} €
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-        {% else %}
-            <p>Todavía no hay operaciones registradas.</p>
-        {% endif %}
+    {% for t in s.closed_ops[-10:]|reverse %}
+    <tr>
+        <td>{{ t.get("symbol", "-") }}</td>
+        <td>{{ "%.2f"|format(t.get("entry_price", 0)) }}</td>
+        <td>{{ "%.2f"|format(t.get("exit_price", 0)) }}</td>
+        <td class="{{ 'profit' if t.get('pnl', 0) >= 0 else 'loss' }}">
+            {{ "%+.2f"|format(t.get("pnl", 0)) }} €
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+    <p>Todavía no hay operaciones cerradas</p>
+{% endif %}
     </div>
 
 </div>

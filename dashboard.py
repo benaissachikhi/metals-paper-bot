@@ -1,0 +1,289 @@
+import json
+import os
+from flask import Flask, render_template_string
+
+app = Flask(__name__)
+
+STATE_FILE = os.getenv("STATE_FILE", "metals_state.json")
+
+DEFAULT_STATE = {
+    "equity": 1000.00,
+    "cash": 1000.00,
+    "daily_pnl": 0.00,
+    "total_pnl": 0.00,
+    "open_positions": [],
+    "closed_trades": 0,
+    "wins": 0,
+    "losses": 0,
+    "win_rate": 0.0,
+    "max_drawdown": 0.0,
+    "trades": []
+}
+
+
+def load_state():
+    try:
+        with open(STATE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            state = DEFAULT_STATE.copy()
+            state.update(data)
+            return state
+    except Exception:
+        return DEFAULT_STATE.copy()
+
+
+HTML = """
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="20">
+    <title>Mi Bot Metales</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #0b1118;
+            color: #f2f5f7;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .container {
+            max-width: 760px;
+            margin: auto;
+            padding: 28px 20px 50px;
+        }
+
+        h1 {
+            font-size: 38px;
+            margin: 0;
+        }
+
+        .subtitle {
+            color: #8e9aa8;
+            font-size: 20px;
+            margin-top: 5px;
+        }
+
+        .online {
+            float: right;
+            background: #123a2b;
+            color: #5ee0a0;
+            padding: 14px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 35px;
+        }
+
+        .card {
+            background: #111922;
+            border: 1px solid #293543;
+            border-radius: 28px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+
+        .label {
+            color: #8e9aa8;
+            font-size: 20px;
+        }
+
+        .big {
+            font-size: 40px;
+            font-weight: bold;
+            margin-top: 12px;
+        }
+
+        .profit {
+            color: #5ee0a0;
+        }
+
+        .loss {
+            color: #ff7185;
+        }
+
+        .position {
+            margin-top: 15px;
+            padding: 15px;
+            background: #0d141c;
+            border-radius: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 14px 5px;
+            border-bottom: 1px solid #293543;
+            text-align: left;
+        }
+
+        th {
+            color: #8e9aa8;
+        }
+
+        .metals {
+            line-height: 1.8;
+        }
+
+        @media (max-width: 600px) {
+            .grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .big {
+                font-size: 30px;
+            }
+
+            h1 {
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <div>
+        <span class="online">● ONLINE</span>
+        <h1>Mi Bot Metales</h1>
+        <div class="subtitle">Paper trading · Oro, Plata y Metales</div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <div class="label">Saldo total</div>
+            <div class="big">{{ "%.2f"|format(s.equity) }} €</div>
+
+            <div class="{{ 'profit' if s.total_pnl >= 0 else 'loss' }}">
+                Resultado total: {{ "%+.2f"|format(s.total_pnl) }} €
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="label">Efectivo</div>
+            <div class="big">{{ "%.2f"|format(s.cash) }} €</div>
+
+            <div class="{{ 'profit' if s.daily_pnl >= 0 else 'loss' }}">
+                Hoy: {{ "%+.2f"|format(s.daily_pnl) }} €
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="label">Posiciones abiertas</div>
+
+        {% if s.open_positions %}
+            {% for p in s.open_positions %}
+                <div class="position">
+                    <strong>{{ p.get("symbol", "-") }}</strong><br>
+                    Entrada: {{ p.get("entry", "-") }} €<br>
+                    PnL:
+                    <span class="{{ 'profit' if p.get('pnl', 0) >= 0 else 'loss' }}">
+                        {{ "%+.2f"|format(p.get("pnl", 0)) }} €
+                    </span>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>Sin posiciones abiertas</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="label">Rendimiento</div>
+
+        <div style="font-size:24px; margin-top:15px;">
+            Operaciones cerradas: <strong>{{ s.closed_trades }}</strong><br>
+            Ganadas: <strong>{{ s.wins }}</strong> ·
+            Perdidas: <strong>{{ s.losses }}</strong><br>
+            Acierto: <strong>{{ "%.1f"|format(s.win_rate) }}%</strong><br>
+
+            Beneficio realizado:
+            <strong class="{{ 'profit' if s.total_pnl >= 0 else 'loss' }}">
+                {{ "%+.2f"|format(s.total_pnl) }} €
+            </strong><br>
+
+            Drawdown máximo:
+            <strong>{{ "%.2f"|format(s.max_drawdown) }} €</strong>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="label">Mercados vigilados</div>
+        <div class="metals" style="font-size:21px; margin-top:12px;">
+            🥇 XAU · Oro<br>
+            🥈 XAG · Plata<br>
+            🔶 Cobre<br>
+            ⚪ Platino<br>
+            ⚫ Paladio
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="label">Últimas operaciones</div>
+
+        {% if s.trades %}
+        <table>
+            <tr>
+                <th>Acción</th>
+                <th>Metal</th>
+                <th>Precio</th>
+                <th>PnL</th>
+            </tr>
+
+            {% for t in s.trades[-10:]|reverse %}
+            <tr>
+                <td>{{ t.get("action", "-") }}</td>
+                <td>{{ t.get("symbol", "-") }}</td>
+                <td>{{ t.get("price", "-") }}</td>
+                <td class="{{ 'profit' if t.get('pnl',0) >= 0 else 'loss' }}">
+                    {{ "%+.2f"|format(t.get("pnl",0)) }} €
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+            <p>Todavía no hay operaciones registradas.</p>
+        {% endif %}
+    </div>
+
+</div>
+</body>
+</html>
+"""
+
+
+@app.route("/")
+def dashboard():
+    state = load_state()
+    return render_template_string(HTML, s=state)
+
+
+@app.route("/health")
+def health():
+    return {"status": "ok"}
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)

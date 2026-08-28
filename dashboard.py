@@ -89,17 +89,38 @@ def load_state():
 
         unrealized_total += pnl
 
-        positions.append({
-            "symbol": symbol,
-            "entry": p.get(
+                entry = float(
+            p.get(
                 "entry_eur",
                 p.get(
                     "entry_price_eur",
-                    p.get("entry", "-")
+                    p.get("entry", 0)
                 )
-            ),
-            "pnl": pnl,
+            ) or 0
+        )
+
+        current_price = float(
+            p.get("current_price_eur", entry)
+        )
+
+        stop = float(
+            p.get("stop_eur", 0) or 0
+        )
+
+        take_profit = float(
+            p.get("take_profit_eur", 0) or 0
+        )
+
+        positions.append({
+            "symbol": symbol,
+            "entry": round(entry, 2),
+            "current": round(current_price, 2),
+            "stop": round(stop, 2),
+            "take_profit": round(take_profit, 2),
+            "pnl": round(pnl, 2),
+                    })
         })
+                
 
     realized = float(raw.get("realized_pnl", 0.0) or 0.0)
     daily = float(raw.get("daily_pnl", 0.0) or 0.0)

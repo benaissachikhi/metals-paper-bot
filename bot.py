@@ -538,6 +538,15 @@ def log_trade(
     pnl=0.0,
     reason="",
 ):
+    trade_time = now_iso()
+
+    clean_reason = (
+        reason
+        .replace(",", ";")
+        .replace("\n", " ")
+    )
+
+    # Guardar copia local CSV
     new_file = not TRADES_FILE.exists()
 
     with TRADES_FILE.open(
@@ -551,14 +560,8 @@ def log_trade(
                 "price_eur,qty,pnl_eur,reason\n"
             )
 
-        clean_reason = (
-            reason
-            .replace(",", ";")
-            .replace("\n", " ")
-        )
-
         file.write(
-            f"{now_iso()},"
+            f"{trade_time},"
             f"{action},"
             f"{symbol},"
             f"{price_eur:.4f},"
@@ -566,6 +569,59 @@ def log_trade(
             f"{pnl:.2f},"
             f"{clean_reason}\n"
         )
+
+    # Guardar también en PostgreSQL
+    db_url = _database_url()
+
+    if db_url:
+        try:
+            import psycopg2
+
+            with psycopg2.connect(db_url) as conn:
+                with conn.cursor() as cur:
+
+                    cur.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS metals_trades (
+                            id BIGSERIAL PRIMARY KEY,
+                            trade_time TIMESTAMPTZ NOT NULL,
+                            action TEXT NOT NULL,
+                            symbol TEXT NOT NULL,
+                            price_eur DOUBLE PRECISION NOT NULL,
+                            qty DOUBLE PRECISION NOT NULL,
+                            pnl_eur DOUBLE PRECISION NOT NULL DEFAULT 0,
+                            reason TEXT
+                        )
+                        """
+                    )
+
+                    cur.execute(
+                        """
+                        INSERT INTO metals_trades (
+                            trade_time,
+                            action,
+                            symbol,
+                            price_eur,
+                            qty,
+                            pnl_eur,
+                            reason
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (
+                            trade_time,
+                            action,
+                            symbol,
+                            float(price_eur),
+                            float(qty),
+                            float(pnl),
+                            clean_reason,
+                        ),
+                    )
+
+        except Exception as exc:
+            print(f"Database trade log error: {exc}")
+
 
 
 # ==========================================================

@@ -24,8 +24,8 @@ DEFAULT_STATE = {
 def load_state():
     raw = None
     db_url = os.getenv("DATABASE_URL", "").strip()
-
-    if db_url:
+    trades = []
+        if db_url:
         try:
             import psycopg2
 
@@ -36,11 +36,38 @@ def load_state():
                     )
                     row = cur.fetchone()
 
-            if row:
-                raw = row[0]
+                    if row:
+                        raw = row[0]
+
+                    try:
+                        cur.execute(
+                            """
+                            SELECT action, symbol, price_eur, pnl_eur
+                            FROM metals_trades
+                            ORDER BY id DESC
+                            LIMIT 10
+                            """
+                        )
+
+                        trade_rows = cur.fetchall()
+                        trade_rows.reverse()
+
+                        trades = [
+                            {
+                                "action": r[0],
+                                "symbol": r[1],
+                                "price": round(float(r[2]), 2),
+                                "pnl": round(float(r[3]), 2),
+                            }
+                            for r in trade_rows
+                        ]
+
+                    except Exception:
+                        trades = []
 
         except Exception as exc:
             print(f"Dashboard database error: {exc}")
+            
 
     if raw is None:
         try:

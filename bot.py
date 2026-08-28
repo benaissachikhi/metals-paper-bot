@@ -370,8 +370,8 @@ def entry_signal(df):
     if momentum:
         score += 20
 
-    if has_volume_data and volume_ok:
-    score += 15
+        if has_volume_data and volume_ok:
+        score += 15
 
     if candle_ok:
         score += 15

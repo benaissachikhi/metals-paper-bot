@@ -339,10 +339,10 @@ def entry_signal(df):
         and current["ema20"] >= previous["ema20"]
     )
 
-    momentum = (
-        rsi >= 52
-        and rsi <= 68
-    )
+        momentum = (
+        rsi >= 48
+        and rsi <= 72
+        )
 
     
         
@@ -390,7 +390,7 @@ def entry_signal(df):
 
     long_signal = (
         trend
-        and score >= 70
+        and score >= 55
     )
 
     if long_signal:

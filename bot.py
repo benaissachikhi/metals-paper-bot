@@ -192,7 +192,13 @@ def load_state():
             if row:
                 return row[0]
 
-            state = default_state()
+                    state = default_state()
+
+            if STATE_FILE.exists():
+                state = json.loads(
+                    STATE_FILE.read_text(encoding="utf-8")
+                )
+
             save_state(state)
             return state
 

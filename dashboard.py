@@ -22,14 +22,87 @@ DEFAULT_STATE = {
 
 
 def load_state():
-    try:
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            state = DEFAULT_STATE.copy()
-            state.update(data)
-            return state
-    except Exception:
-        return DEFAULT_STATE.copy()
+    raw = None
+    db_url = os.getenv("DATABASE_URL", "").strip()
+
+    if db_url:
+        try:
+            import psycopg2
+
+            with psycopg2.connect(db_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT state FROM metals_bot_state WHERE id = 1"
+                    )
+                    row = cur.fetchone()
+
+            if row:
+                raw = row[0]
+
+        except Exception as exc:
+            print(f"Dashboard database error: {exc}")
+
+    if raw is None:
+        try:
+            with open(STATE_FILE, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+        except Exception:
+            raw = {}
+
+    positions = []
+    unrealized_total = 0.0
+
+    for symbol, p in raw.get("positions", {}).items():
+        pnl = float(
+            p.get(
+                "unrealized_pnl",
+                p.get("pnl", 0.0)
+            ) or 0.0
+        )
+
+        unrealized_total += pnl
+
+        positions.append({
+            "symbol": symbol,
+            "entry": p.get(
+                "entry_eur",
+                p.get(
+                    "entry_price_eur",
+                    p.get("entry", "-")
+                )
+            ),
+            "pnl": pnl,
+        })
+
+    realized = float(raw.get("realized_pnl", 0.0) or 0.0)
+    daily = float(raw.get("daily_pnl", 0.0) or 0.0)
+    total_pnl = realized + unrealized_total
+
+    closed = int(raw.get("closed_trades", 0) or 0)
+    wins = int(raw.get("wins", 0) or 0)
+    losses = int(raw.get("losses", 0) or 0)
+
+    win_rate = (
+        wins / closed * 100
+        if closed > 0
+        else 0.0
+    )
+
+    return {
+        "equity": 1000.0 + total_pnl,
+        "cash": float(raw.get("cash_eur", 1000.0) or 0.0),
+        "daily_pnl": daily,
+        "total_pnl": total_pnl,
+        "open_positions": positions,
+        "closed_trades": closed,
+        "wins": wins,
+        "losses": losses,
+        "win_rate": win_rate,
+        "max_drawdown": float(
+            raw.get("max_drawdown", 0.0) or 0.0
+        ),
+        "trades": raw.get("trades", []),
+    }
 
 
 HTML = """

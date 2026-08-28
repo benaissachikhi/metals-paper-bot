@@ -327,11 +327,11 @@ def entry_signal(df):
     and volume_ma20 > 0
 )
 
-relative_volume = (
-    volume / volume_ma20
-    if has_volume_data
-    else 1.0
-)
+    relative_volume = (
+        volume / volume_ma20
+        if has_volume_data
+        else 1.0
+    )
 
     trend = (
         price > ema20

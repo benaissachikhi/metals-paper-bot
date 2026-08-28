@@ -81,7 +81,7 @@ def load_state():
     positions = []
     unrealized_total = 0.0
 
-    for symbol, p in raw.get("positions", {}).items():
+        for symbol, p in raw.get("positions", {}).items():
         pnl = float(
             p.get(
                 "unrealized_pnl",
@@ -91,7 +91,7 @@ def load_state():
 
         unrealized_total += pnl
 
-                entry = float(
+        entry = float(
             p.get(
                 "entry_eur",
                 p.get(
@@ -102,7 +102,7 @@ def load_state():
         )
 
         current_price = float(
-            p.get("current_price_eur", entry)
+            p.get("current_price_eur", entry) or entry
         )
 
         stop = float(
@@ -120,7 +120,7 @@ def load_state():
             "stop": round(stop, 2),
             "take_profit": round(take_profit, 2),
             "pnl": round(pnl, 2),
-                    })
+        })
         
                 
 

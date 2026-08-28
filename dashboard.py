@@ -26,7 +26,8 @@ def load_state():
     raw = None
     db_url = os.getenv("DATABASE_URL", "").strip()
     trades = []
-        if db_url:
+
+    if db_url:
         try:
             import psycopg2
 

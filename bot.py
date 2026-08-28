@@ -111,7 +111,62 @@ def default_state():
     }
 
 
+def _database_url():
+    import os
+    return os.getenv("DATABASE_URL", "").strip()
+
+
+def _ensure_state_table():
+    db_url = _database_url()
+
+    if not db_url:
+        return False
+
+    import psycopg2
+
+    with psycopg2.connect(db_url) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS metals_bot_state (
+                    id INTEGER PRIMARY KEY,
+                    state JSONB NOT NULL,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+
+    return True
+
+
 def save_state(state):
+    db_url = _database_url()
+
+    if db_url:
+        try:
+            import psycopg2
+
+            _ensure_state_table()
+
+            with psycopg2.connect(db_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO metals_bot_state (id, state, updated_at)
+                        VALUES (1, %s::jsonb, NOW())
+                        ON CONFLICT (id)
+                        DO UPDATE SET
+                            state = EXCLUDED.state,
+                            updated_at = NOW()
+                        """,
+                        (json.dumps(state),),
+                    )
+
+            return
+
+        except Exception as exc:
+            print(f"Database save error: {exc}")
+
     STATE_FILE.write_text(
         json.dumps(state, indent=2),
         encoding="utf-8",
@@ -119,6 +174,31 @@ def save_state(state):
 
 
 def load_state():
+    db_url = _database_url()
+
+    if db_url:
+        try:
+            import psycopg2
+
+            _ensure_state_table()
+
+            with psycopg2.connect(db_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT state FROM metals_bot_state WHERE id = 1"
+                    )
+                    row = cur.fetchone()
+
+            if row:
+                return row[0]
+
+            state = default_state()
+            save_state(state)
+            return state
+
+        except Exception as exc:
+            print(f"Database load error: {exc}")
+
     if not STATE_FILE.exists():
         state = default_state()
         save_state(state)

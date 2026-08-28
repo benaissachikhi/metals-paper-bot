@@ -119,7 +119,7 @@ def load_state():
             "take_profit": round(take_profit, 2),
             "pnl": round(pnl, 2),
                     })
-        })
+        
                 
 
     realized = float(raw.get("realized_pnl", 0.0) or 0.0)
@@ -149,7 +149,7 @@ def load_state():
         "max_drawdown": float(
             raw.get("max_drawdown", 0.0) or 0.0
         ),
-        "trades": raw.get("trades", []),
+        "trades": trades if trades else raw.get("trades", []),
     }
 
 
@@ -317,13 +317,25 @@ HTML = """
         {% if s.open_positions %}
             {% for p in s.open_positions %}
                 <div class="position">
-                    <strong>{{ p.get("symbol", "-") }}</strong><br>
-                    Entrada: {{ p.get("entry", "-") }} €<br>
-                    PnL:
-                    <span class="{{ 'profit' if p.get('pnl', 0) >= 0 else 'loss' }}">
-                        {{ "%+.2f"|format(p.get("pnl", 0)) }} €
-                    </span>
-                </div>
+    <strong>{{ p.get("symbol", "-") }}</strong><br><br>
+
+    Entrada:
+    {{ "%.2f"|format(p.get("entry", 0)) }} €<br>
+
+    Ahora:
+    {{ "%.2f"|format(p.get("current", 0)) }} €<br>
+
+    Stop Loss:
+    {{ "%.2f"|format(p.get("stop", 0)) }} €<br>
+
+    Take Profit:
+    {{ "%.2f"|format(p.get("take_profit", 0)) }} €<br>
+
+    PnL:
+    <span class="{{ 'profit' if p.get('pnl', 0) >= 0 else 'loss' }}">
+        {{ "%+.2f"|format(p.get("pnl", 0)) }} €
+    </span>
+</div>
             {% endfor %}
         {% else %}
             <p>Sin posiciones abiertas</p>

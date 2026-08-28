@@ -339,7 +339,7 @@ def entry_signal(df):
         and current["ema20"] >= previous["ema20"]
     )
 
-        momentum = (
+    momentum = (
         rsi >= 48
         and rsi <= 72
         )

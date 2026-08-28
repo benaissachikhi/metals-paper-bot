@@ -320,11 +320,18 @@ def entry_signal(df):
     ):
         return False, "Invalid market data", {}
 
-    relative_volume = (
-        volume / volume_ma20
-        if volume_ma20 > 0
-        else 0
-    )
+    has_volume_data = (
+    math.isfinite(volume)
+    and math.isfinite(volume_ma20)
+    and volume > 0
+    and volume_ma20 > 0
+)
+
+relative_volume = (
+    volume / volume_ma20
+    if has_volume_data
+    else 1.0
+)
 
     trend = (
         price > ema20
@@ -337,8 +344,12 @@ def entry_signal(df):
         and rsi <= 68
     )
 
+    
+        
     volume_ok = (
-        relative_volume >= 0.80
+    True
+    if not has_volume_data
+    else relative_volume >= 0.80
     )
 
     candle_ok = (
@@ -359,8 +370,8 @@ def entry_signal(df):
     if momentum:
         score += 20
 
-    if volume_ok:
-        score += 15
+    if has_volume_data and volume_ok:
+    score += 15
 
     if candle_ok:
         score += 15

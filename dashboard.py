@@ -81,7 +81,7 @@ def load_state():
     positions = []
     unrealized_total = 0.0
 
-        for symbol, p in raw.get("positions", {}).items():
+    for symbol, p in raw.get("positions", {}).items():
         pnl = float(
             p.get(
                 "unrealized_pnl",

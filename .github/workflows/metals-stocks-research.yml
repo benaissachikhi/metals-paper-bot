@@ -1,0 +1,41 @@
+name: Metals Stocks Research
+
+on:
+  workflow_dispatch:
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy yfinance
+
+      - name: Run research
+        run: |
+          python research_metals_stocks.py
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metals-stocks-results
+          path: |
+            metals_stocks_summary.json
+            metals_stocks_trades.csv
+            metals_stocks_oos_symbols.csv
+            metals_stocks_oos_equity.csv
+            metals_stocks_comparison.csv
+          if-no-files-found: warn
+          retention-days: 30

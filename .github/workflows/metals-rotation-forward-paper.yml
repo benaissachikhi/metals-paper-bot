@@ -1,0 +1,60 @@
+name: Metals Rotation Forward Paper
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 23 * * 1-5"
+
+permissions:
+  contents: read
+
+jobs:
+  forward-paper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy yfinance
+
+      - name: Compile frozen forward system
+        run: |
+          python -m py_compile research_metals_rotation.py
+          python -m py_compile research_metals_rotation_risk.py
+          python -m py_compile metals_rotation_forward_paper.py
+
+      - name: Run forward paper
+        run: |
+          python metals_rotation_forward_paper.py
+
+      - name: Add report to GitHub Summary
+        if: always()
+        run: |
+          if [ -f metals_rotation_forward_report.md ]; then
+            cat metals_rotation_forward_report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload forward results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metals-rotation-forward-paper-results
+          path: |
+            metals_rotation_forward_summary.json
+            metals_rotation_forward_report.md
+            metals_rotation_forward_trades.csv
+            metals_rotation_forward_equity.csv
+            metals_rotation_forward_positions.csv
+            metals_rotation_forward_exposure.csv
+          if-no-files-found: warn
+          retention-days: 90
